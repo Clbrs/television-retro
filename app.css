@@ -46,7 +46,7 @@ button:focus-visible { outline: 4px solid #f2c879; outline-offset: 4px; }
   display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-end; gap: 40px 48px; min-height: 100%;
   align-content: center;
 }
-#canales li { width: min(78vw, 440px); }
+#canales li { width: min(80vw, 540px); }
 .canal-boton { display: block; width: 100%; border-radius: 14px; transition: transform .15s; }
 .canal-boton:active { transform: scale(.97); }
 /* la mesita de madera donde está cada tele */
