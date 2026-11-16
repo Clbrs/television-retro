@@ -57,6 +57,21 @@ function actualizar() {
     cat.series.reduce(function (n, s) { return n + s.capitulos.length; }, 0));
 }
 
+// Prueba completa sin sacar la clave del script: catálogo, un trozo de vídeo y que sin clave no da nada.
+function probar() {
+  const k = PropertiesService.getScriptProperties().getProperty('CLAVE');
+  const pide = function (o) { return doPost({ postData: { contents: JSON.stringify(Object.assign({ k: k }, o)) } }).getContent(); };
+  const cat = JSON.parse(pide({ a: 'catalogo' }));
+  const s = cat.series[0], c = s.capitulos[0];
+  const t = Utilities.base64Decode(pide({ a: 'trozo', v: c.video, d: 0, h: 65535 }));
+  const m = Utilities.base64Decode(pide({ a: 'trozo', v: c.video, d: c.bytes - 1000, h: c.bytes - 1 }));
+  Logger.log('%s series; %s: %s capítulos; trozo inicial %s bytes (%s), trozo final %s bytes',
+    cat.series.length, s.nombre, s.capitulos.length, t.length, Utilities.newBlob(t.slice(4, 8)).getDataAsString(), m.length);
+  Logger.log('Guardar: %s; estado: %s', pide({ a: 'guardar', s: s.id, n: c.n, t: 0 }), pide({ a: 'estado', s: s.id }));
+  Logger.log('Sin clave: %s; trozo demasiado grande: %s', doPost({ postData: { contents: '{"k":"x","a":"catalogo"}' } }).getContent(),
+    pide({ a: 'trozo', v: c.video, d: 0, h: MAX_BYTES_TROZO }));
+}
+
 // Por GET no se entrega nada: así la dirección del script, aunque sea pública, no sirve sin la clave.
 function doGet() {
   return texto_('no');
