@@ -1,6 +1,6 @@
 'use strict';
 // ===== Configuración: URL de la aplicación web de Apps Script (termina en /exec) =====
-const URL_PUBLICADA = '';
+const URL_PUBLICADA = 'https://script.google.com/macros/s/AKfycbyOECLbtU6qtFeGH5vVOYUWpx_RJMmxbmiREBZbYpZEXIqM1DIx9YL2iZIB_J5Wxk2o/exec';
 // =====================================================================================
 
 const $ = s => document.querySelector(s);
