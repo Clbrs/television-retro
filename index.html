@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self' https://script.google.com https://script.googleusercontent.com; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#1d3b3d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Televisión Retro</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icono-192.png">
+<link rel="apple-touch-icon" href="icono-180.png">
+<link rel="preload" href="tele.png" as="image">
+<link rel="stylesheet" href="app.css?v=1">
+</head>
+<body>
+
+<!-- Menú: una tele por serie -->
+<main id="menu" aria-label="Canales">
+  <ul id="canales"></ul>
+</main>
+
+<!-- Plantilla de la tele (se usa en el menú y en el canal) -->
+<template id="plantilla-tele">
+  <span class="tele">
+    <span class="pantalla">
+      <span class="carta-ajuste" aria-hidden="true"></span>
+      <img class="portada" alt="">
+    </span>
+    <img class="marco" src="tele.png" alt="" draggable="false">
+  </span>
+</template>
+
+<!-- Canal: la tele grande con el capítulo -->
+<section id="canal" aria-label="Canal" hidden>
+  <div id="zona-tele">
+    <div class="tele" id="tele">
+      <div class="pantalla" id="pantalla">
+        <video id="video" playsinline disableremoteplayback preload="auto"></video>
+        <img id="siguiente" alt="">
+        <canvas id="nieve" width="128" height="96" aria-hidden="true"></canvas>
+        <span id="lineas" aria-hidden="true"></span>
+        <button id="tocar-play" aria-label="Ver">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5v17a1 1 0 0 0 1.5.86l14-8.5a1 1 0 0 0 0-1.72l-14-8.5A1 1 0 0 0 6 3.5z" fill="currentColor"/></svg>
+        </button>
+      </div>
+      <img class="marco" src="tele.png" alt="" draggable="false">
+    </div>
+  </div>
+  <div id="mandos">
+    <button class="boton" id="casa" aria-label="Volver a los canales">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 11.2 12 4l8.5 7.2M6 9.5V20h4.5v-5.5h3V20H18V9.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button class="boton" id="reiniciar" aria-label="Volver a empezar el capítulo (mantener pulsado)">
+      <svg class="aro" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" pathLength="100"/></svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5v5h5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.6 10A7.5 7.5 0 1 1 6 15.6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+    </button>
+    <button class="boton grande" id="play" aria-label="Pausar o seguir">
+      <svg class="icono-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5v17a1 1 0 0 0 1.5.86l14-8.5a1 1 0 0 0 0-1.72l-14-8.5A1 1 0 0 0 6 3.5z" fill="currentColor"/></svg>
+      <svg class="icono-pausa" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3.5" width="5" height="17" rx="1.6" fill="currentColor"/><rect x="14" y="3.5" width="5" height="17" rx="1.6" fill="currentColor"/></svg>
+    </button>
+  </div>
+</section>
+
+<div id="aviso" role="alert">
+  <button id="reintentar" aria-label="Sin conexión. Tocar para reintentar">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 8.5a15 15 0 0 1 20 0M5 12a10 10 0 0 1 14 0M8.5 15.5a5 5 0 0 1 7 0"/><circle cx="12" cy="19" r="1.2" fill="currentColor"/><path d="M3 3l18 18" stroke-width="2.6"/></g></svg>
+  </button>
+</div>
+
+<div id="candado" role="dialog" aria-modal="true" aria-labelledby="titulo-clave">
+  <form id="form-clave" autocomplete="off">
+    <svg class="icono-candado" viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5" fill="currentColor"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+    <label id="titulo-clave" for="campo-clave">Clave de acceso</label>
+    <input id="campo-clave" type="password" inputmode="text" autocapitalize="off" spellcheck="false" required>
+    <p class="mal" role="alert">Esa clave no vale. Cópiala otra vez del registro del script.</p>
+    <button type="submit">Entrar</button>
+  </form>
+</div>
+
+<script src="app.js?v=1" defer></script>
+</body>
+</html>

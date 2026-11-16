@@ -1,0 +1,142 @@
+:root {
+  --papel: #1d3b3d;        /* papel pintado verde azulado de salón de los 90 */
+  --papel-raya: #224446;
+  --madera: #6b4428;
+  --madera-oscura: #4a2d19;
+  --plastico: #e9dcc2;     /* botones de mando a distancia */
+  --tinta: #3a2a20;
+  --rojo: #c8372d;
+  --sala-a-oscuras: #120d0a;
+  --brillo: 112, 170, 205; /* luz azulada que sale de la pantalla */
+  --pantalla-x: 7.337%; --pantalla-y: 10.166%; --pantalla-w: 66.168%; --pantalla-h: 75.311%;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; overflow: hidden; }
+body {
+  font: 600 18px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--plastico);
+  background: var(--papel) repeating-linear-gradient(90deg, var(--papel) 0 34px, var(--papel-raya) 34px 68px);
+  user-select: none; -webkit-user-select: none;
+  touch-action: manipulation;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+button:focus-visible { outline: 4px solid #f2c879; outline-offset: 4px; }
+[hidden] { display: none !important; }
+
+/* ---------- La tele (común) ---------- */
+.tele { position: relative; display: block; aspect-ratio: 1472 / 964; }
+.tele .marco { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.pantalla {
+  position: absolute; left: var(--pantalla-x); top: var(--pantalla-y); width: var(--pantalla-w); height: var(--pantalla-h);
+  background: #050505; overflow: hidden; border-radius: 6% / 8%;
+}
+.pantalla > * { position: absolute; inset: 0; width: 100%; height: 100%; }
+.portada { object-fit: cover; opacity: 0; transition: opacity .4s; }
+.portada.cargada { opacity: 1; }
+/* carta de ajuste mientras no haya imagen de la serie */
+.carta-ajuste {
+  background: linear-gradient(90deg, #c0c0c0 0 14.3%, #c0c000 0 28.6%, #00c0c0 0 42.9%, #00c000 0 57.2%, #c000c0 0 71.5%, #c00000 0 85.8%, #0000c0 0);
+}
+
+/* ---------- Menú ---------- */
+#menu { height: 100%; overflow-y: auto; padding: max(28px, env(safe-area-inset-top)) 24px 40px; }
+#canales {
+  list-style: none; margin: 0 auto; padding: 0; max-width: 1200px;
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-end; gap: 40px 48px; min-height: 100%;
+  align-content: center;
+}
+#canales li { width: min(78vw, 440px); }
+.canal-boton { display: block; width: 100%; border-radius: 14px; transition: transform .15s; }
+.canal-boton:active { transform: scale(.97); }
+/* la mesita de madera donde está cada tele */
+.canal-boton::after {
+  content: ""; display: block; height: 18px; margin: -2px -6% 0; border-radius: 4px 4px 2px 2px;
+  background: linear-gradient(var(--madera) 0 65%, var(--madera-oscura) 0);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, .35);
+}
+
+/* ---------- Canal ---------- */
+#canal {
+  position: fixed; inset: 0; display: grid; grid-template-columns: 1fr auto; gap: 12px;
+  padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  background: radial-gradient(ellipse at 45% 50%, rgba(var(--brillo), .16), transparent 62%), var(--sala-a-oscuras);
+}
+#zona-tele { container-type: size; display: grid; place-items: center; min-width: 0; min-height: 0; }
+#tele { width: min(100cqw, 100cqh * 1.527); }
+#tele .pantalla { cursor: pointer; }
+#tele .pantalla::after {   /* curvatura y brillo del tubo */
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(0, 0, 0, .45) 100%),
+              radial-gradient(ellipse at 30% 18%, rgba(255, 255, 255, .10), transparent 40%);
+}
+#video { object-fit: cover; background: #000; }
+#siguiente { object-fit: cover; opacity: 0; transition: opacity .6s; }
+#siguiente.visible { opacity: 1; }
+#nieve { image-rendering: pixelated; opacity: 0; transition: opacity .25s; pointer-events: none; }
+#nieve.visible { opacity: 1; }
+#nieve.suave { opacity: .45; }
+#lineas {
+  pointer-events: none; opacity: .22;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .9) 0 1px, transparent 1px 3px);
+}
+#tocar-play {
+  display: none; place-items: center; background: rgba(0, 0, 0, .35); color: #fff; z-index: 2;
+}
+#tocar-play svg { width: 22%; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, .6)); }
+#canal.en-pausa #tocar-play { display: grid; }
+
+#mandos { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 22px; padding: 6px; }
+.boton {
+  position: relative; display: grid; place-items: center; width: 76px; height: 76px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f7eedb, var(--plastico) 55%, #cdbd9c);
+  color: var(--tinta);
+  box-shadow: 0 5px 0 #a8977a, 0 9px 16px rgba(0, 0, 0, .5);
+  transition: transform .08s, box-shadow .08s;
+}
+.boton:active, .boton.pulsado { transform: translateY(4px); box-shadow: 0 1px 0 #a8977a, 0 3px 8px rgba(0, 0, 0, .5); }
+.boton > svg { width: 52%; height: 52%; }
+.boton.grande { width: 104px; height: 104px; }
+#casa { margin-bottom: auto; }
+#mandos::after { content: ""; margin-top: auto; }
+#play .icono-pausa { display: none; }
+#canal:not(.en-pausa) #play .icono-play { display: none; }
+#canal:not(.en-pausa) #play .icono-pausa { display: block; }
+#play { color: var(--rojo); }
+
+/* volver a empezar: hay que mantenerlo pulsado; el aro se va llenando */
+#reiniciar .aro { position: absolute; inset: -7px; width: calc(100% + 14px); height: calc(100% + 14px); transform: rotate(-90deg); pointer-events: none; }
+#reiniciar .aro circle { fill: none; stroke: #f2c879; stroke-width: 7; stroke-linecap: round; stroke-dasharray: 0 100; opacity: 0; }
+#reiniciar.cargando .aro circle { opacity: 1; stroke-dasharray: 100 100; transition: stroke-dasharray 1.6s linear; }
+
+@media (orientation: portrait) {
+  #canal { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+  #mandos { flex-direction: row; padding-bottom: 18px; }
+  #casa { margin: 0 auto 0 0; }
+  #mandos::after { margin: 0 0 0 auto; }
+}
+@media (max-height: 420px) and (orientation: landscape) {
+  .boton { width: 60px; height: 60px; }
+  .boton.grande { width: 80px; height: 80px; }
+  #mandos { gap: 14px; }
+}
+
+/* ---------- Avisos ---------- */
+#aviso { position: fixed; right: 18px; bottom: 18px; display: none; z-index: 5; }
+#aviso.visible { display: block; }
+#reintentar { display: grid; place-items: center; width: 72px; height: 72px; border-radius: 50%; background: var(--rojo); color: #fff; box-shadow: 0 6px 16px rgba(0, 0, 0, .5); }
+#reintentar svg { width: 60%; }
+
+#candado { position: fixed; inset: 0; display: none; place-items: center; background: rgba(10, 8, 6, .92); z-index: 10; }
+#candado.visible { display: grid; }
+#form-clave { display: grid; gap: 14px; justify-items: center; width: min(90vw, 380px); padding: 28px; border-radius: 18px; background: #2a201a; }
+.icono-candado { width: 56px; color: #f2c879; }
+#campo-clave { width: 100%; font: inherit; padding: 12px 14px; border-radius: 10px; border: 2px solid #6b5a4a; background: #120d0a; color: #fff; }
+#campo-clave:focus-visible { outline: 3px solid #f2c879; outline-offset: 2px; }
+#candado .mal { display: none; margin: 0; color: #ff9a8f; font-size: 15px; text-align: center; }
+#candado.error .mal { display: block; }
+#form-clave button { padding: 12px 26px; border-radius: 10px; background: var(--plastico); color: var(--tinta); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
