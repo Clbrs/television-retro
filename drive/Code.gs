@@ -16,6 +16,11 @@
  * (Ejecutar como: Yo; Acceso: Cualquier usuario). Para añadir capítulos o series, súbelos
  * y, si no aparecen en unos minutos, ejecuta actualizar(). Para quitar el acceso a todos los
  * aparatos, ejecuta generarClave() otra vez (habrá que meter la clave nueva en cada uno).
+ *
+ * PIN entre capítulos: al acabar un capítulo la tele se bloquea (en todos los canales) hasta que se
+ * mete uno de los PIN. Aquí solo se guardan sus huellas (SHA-256 con sal). Para cambiarlos: en
+ * Configuración del proyecto > Propiedades del script crea PINES_EN_CLARO con los PIN separados por
+ * comas y ejecuta cambiarPines(), que guarda las huellas y borra esa propiedad.
  */
 
 const NOMBRE_CARPETA = 'TelevisionRetro';
@@ -25,7 +30,9 @@ const MAX_CAPITULOS = 500;
 const MAX_BYTES_TROZO = 4 * 1024 * 1024;       // lo más que se entrega en una petición
 const MAX_CARATULAS_POR_PETICION = 25;
 const MAX_BYTES_CARATULA = 2 * 1024 * 1024;
-const MAX_CUERPO = 4096;                         // tamaño máximo de una petición
+const MAX_CUERPO = 4096;
+const MAX_FALLOS_PIN = 5;                        // PIN mal seguidos antes de esperar
+const MINUTOS_ESPERA_PIN = 5;                         // tamaño máximo de una petición
 const URL_APP = 'https://clbrs.github.io/television-retro/';
 
 function instalar() {
@@ -95,6 +102,8 @@ function doPost(e) {
       case 'trozo': return trozo_(pet.v, pet.d, pet.h);
       case 'estado': return json_(estado_(pet.s));
       case 'guardar': return guardar_(pet.s, pet.n, pet.t);
+      case 'bloquear': PropertiesService.getScriptProperties().setProperty('BLOQUEO', '1'); return texto_('ok');
+      case 'pin': return pin_(pet.p);
     }
   } catch (err) {
     console.error(err);   // el detalle se queda en el registro del script, nunca va a la app
@@ -103,11 +112,58 @@ function doPost(e) {
 }
 
 function claveValida_(k) {
-  const buena = PropertiesService.getScriptProperties().getProperty('CLAVE');
-  if (!buena || typeof k !== 'string' || k.length !== buena.length) return false;
+  return igual_(PropertiesService.getScriptProperties().getProperty('CLAVE'), k);
+}
+
+// Compara dos textos en tiempo constante (no da pistas de cuántos caracteres acierta).
+function igual_(buena, otra) {
+  if (!buena || typeof otra !== 'string' || otra.length !== buena.length) return false;
   let dif = 0;
-  for (let i = 0; i < buena.length; i++) dif |= buena.charCodeAt(i) ^ k.charCodeAt(i);  // tiempo constante
+  for (let i = 0; i < buena.length; i++) dif |= buena.charCodeAt(i) ^ otra.charCodeAt(i);
   return dif === 0;
+}
+
+// ---------- PIN entre capítulos ----------
+
+function huella_(sal, pin) {
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, sal + pin, Utilities.Charset.UTF_8)
+    .map(function (b) { return ('0' + ((b + 256) % 256).toString(16)).slice(-2); }).join('');
+}
+
+function pin_(p) {
+  if (typeof p !== 'string' || !/^\d{4,12}$/.test(p)) return texto_('mal');
+  const cache = CacheService.getScriptCache();
+  const fallos = Number(cache.get('pin_fallos') || 0);
+  if (fallos >= MAX_FALLOS_PIN) return texto_('espera');
+  const props = PropertiesService.getScriptProperties();
+  const sal = props.getProperty('PIN_SAL');
+  let huellas = [];
+  try { huellas = JSON.parse(props.getProperty('PINES') || '[]'); } catch (err) { huellas = []; }
+  if (!sal || !Array.isArray(huellas) || !huellas.length) return texto_('mal');
+  const h = huella_(sal, p);
+  let ok = false;
+  huellas.forEach(function (x) { if (igual_(x, h)) ok = true; });   // se comparan todas, acierte o no
+  if (!ok) {
+    cache.put('pin_fallos', String(fallos + 1), MINUTOS_ESPERA_PIN * 60);
+    Utilities.sleep(500);
+    return texto_('mal');
+  }
+  cache.remove('pin_fallos');
+  props.deleteProperty('BLOQUEO');
+  return texto_('ok');
+}
+
+// Lee los PIN de la propiedad PINES_EN_CLARO, guarda solo sus huellas con una sal nueva y borra los PIN en claro.
+function cambiarPines() {
+  const props = PropertiesService.getScriptProperties();
+  const claro = props.getProperty('PINES_EN_CLARO');
+  if (!claro) throw new Error('Crea antes la propiedad PINES_EN_CLARO con los PIN separados por comas.');
+  const pines = claro.split(',').map(function (x) { return x.trim(); }).filter(function (x) { return /^\d{4,12}$/.test(x); });
+  props.deleteProperty('PINES_EN_CLARO');
+  if (!pines.length) throw new Error('No hay ningún PIN válido (de 4 a 12 cifras).');
+  const sal = (Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, '');
+  props.setProperties({ PIN_SAL: sal, PINES: JSON.stringify(pines.map(function (x) { return huella_(sal, x); })) });
+  Logger.log('Guardados %s PIN (solo sus huellas). La propiedad PINES_EN_CLARO se ha borrado.', pines.length);
 }
 
 // ---------- Catálogo ----------
@@ -253,13 +309,15 @@ function trozo_(v, d, h) {
 // ---------- Por dónde va cada canal (compartido entre todos los aparatos) ----------
 
 function estado_(serie) {
-  if (!idValido_(serie) || !permitidos_().series[serie]) return {};
-  const v = PropertiesService.getScriptProperties().getProperty('E_' + serie);
-  if (!v) return {};
+  const props = PropertiesService.getScriptProperties();
+  const b = props.getProperty('BLOQUEO') === '1';     // la tele está esperando un PIN (vale para todos los canales)
+  if (!idValido_(serie) || !permitidos_().series[serie]) return { b: b };
+  const v = props.getProperty('E_' + serie);
+  if (!v) return { b: b };
   try {
     const e = JSON.parse(v);
-    return { n: e.n, t: e.t, ts: e.ts };
-  } catch (err) { return {}; }
+    return { n: e.n, t: e.t, ts: e.ts, b: b };
+  } catch (err) { return { b: b }; }
 }
 
 function guardar_(serie, n, t) {

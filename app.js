@@ -8,14 +8,13 @@ const video = $('#video');
 const params = new URLSearchParams(location.search);
 const MODO_PRUEBA = !URL_PUBLICADA || params.has('local');
 const URL_SCRIPT = (MODO_PRUEBA && params.get('script')) || URL_PUBLICADA;   // ?script= solo en pruebas locales
-const LS_CAT = 'tv.catalogo', LS_CLAVE = 'tv.clave', LS_ESTADO = 'tv.estado.';
+const LS_CAT = 'tv.catalogo', LS_CLAVE = 'tv.clave', LS_ESTADO = 'tv.estado.', LS_BLOQUEO = 'tv.bloqueo';
 
 const BYTES_POR_PETICION = 3.5 * 1024 * 1024;  // el script entrega como mucho 4 MB por petición
 const SEGUNDOS_POR_DELANTE = 60;                // cuánto vídeo se tiene cargado por delante
 const SEGUNDOS_POR_DETRAS = 20;                 // lo ya visto que se conserva (el resto se libera)
 const GUARDAR_CADA_MS = 20000;                  // cada cuánto se avisa al script de por dónde va
 const PULSACION_REINICIAR_MS = 1600;
-const ESPERA_A_CONTINUACION_MS = 5000;
 
 const leer = (k, def) => { try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch { return def; } };
 const escribir = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* sin almacenamiento: la app sigue */ } };
@@ -391,7 +390,7 @@ async function emitir(cap, t, enGesto) {
 }
 
 // ---------- Canal ----------
-let canal = null;            // { serie, cap, siguienteTimer }
+let canal = null;            // { serie, cap, t }
 const estadoLocal = id => { const v = leer(LS_ESTADO + id, null); return v && typeof v === 'object' ? v : {}; };
 function capituloDe(serie, n) { return serie.capitulos.find(c => c.n === n) || null; }
 
@@ -400,6 +399,7 @@ async function posicionGuardada(serie) {
   let mejor = local;
   try {
     const remoto = await Promise.race([llamarJSON('estado', { s: serie.id }), esperar(4000).then(() => null)]);
+    if (remoto && remoto.b === true) bloquear(false);   // otro aparato acabó un capítulo: también aquí hace falta el PIN
     if (remoto && Number.isInteger(remoto.n) && (!local.ts || (Number(remoto.ts) || 0) >= local.ts)) mejor = remoto;
   } catch (e) { if (e instanceof SinPermiso) throw e; }
   const cap = capituloDe(serie, Number(mejor.n)) || serie.capitulos[0];
@@ -431,11 +431,12 @@ video.addEventListener('waiting', () => { clearTimeout(senalTimer); senalTimer =
 video.addEventListener('ended', () => { if (canal) aContinuacion(); });
 
 async function entrarEnCanal(serie) {
-  canal = { serie, cap: null, t: 0, enMarcha: false };
+  canal = { serie, cap: null, t: 0 };
   $('#menu').hidden = true;
   $('#canal').hidden = false;
   ponerPausa(false);
   $('#siguiente').classList.remove('visible');
+  ocultarPin();
   mostrarNieve('fuerte');
   // el toque que abre el canal sirve de permiso para reproducir con sonido
   video.muted = false;
@@ -445,6 +446,7 @@ async function entrarEnCanal(serie) {
     if (canal?.serie !== serie) return;
     canal.cap = cap; canal.t = t;
     ponerImagen($('#siguiente'), cap.caratula);
+    if (bloqueado()) { mostrarCaratula(); mostrarPin(); return; }
     await sintonizar(false);
   } catch (e) {
     if (e instanceof SinPermiso) mostrarCandado(true); else { console.error(e); avisoSinConexion(true); }
@@ -453,6 +455,7 @@ async function entrarEnCanal(serie) {
 
 async function sintonizar(enGesto) {
   if (!canal || !canal.cap) return;
+  if (bloqueado()) { mostrarCaratula(); mostrarPin(); return; }
   const c = canal;
   mostrarNieve('fuerte');
   try {
@@ -467,27 +470,85 @@ async function sintonizar(enGesto) {
   }
 }
 
+// Fin del capítulo: se prepara el siguiente y la tele queda bloqueada hasta que se meta un PIN.
 function aContinuacion() {
   const c = canal;
   const caps = c.serie.capitulos;
   const sig = caps[(caps.indexOf(c.cap) + 1) % caps.length];
   c.cap = sig; c.t = 0;
   guardarPosicion(true);
+  bloquear(true);
   pararEmision();
   ponerPausa(false);
-  const img = $('#siguiente');
-  ponerImagen(img, sig.caratula);
-  img.classList.add('visible');
-  mostrarNieve(sig.caratula ? false : 'fuerte');
-  clearTimeout(c.siguienteTimer);
-  c.siguienteTimer = setTimeout(() => { if (canal === c) sintonizar(false); }, ESPERA_A_CONTINUACION_MS);
+  ponerImagen($('#siguiente'), sig.caratula);
+  mostrarCaratula();
+  mostrarPin();
 }
+function mostrarCaratula() {
+  $('#siguiente').classList.add('visible');
+  mostrarNieve(canal && canal.cap && canal.cap.caratula ? false : 'fuerte');
+}
+
+// ---------- PIN entre capítulos (vale para todos los canales; lo comprueba el script) ----------
+const bloqueado = () => leer(LS_BLOQUEO, false) === true;
+function bloquear(avisarAlScript) {
+  escribir(LS_BLOQUEO, true);
+  if (avisarAlScript) llamar('bloquear', {}, { keepalive: true }).catch(() => {});
+}
+const LONGITUD_PIN = 8;
+let pinTecleado = '', comprobandoPin = false;
+function pintarPin() {
+  $('#pin-puntos').querySelectorAll('span').forEach((p, i) => p.classList.toggle('lleno', i < pinTecleado.length));
+}
+function mostrarPin() {
+  pinTecleado = '';
+  pintarPin();
+  $('#pin').classList.remove('mal', 'espera');
+  $('#pin').hidden = false;
+  ponerPausa(true);
+}
+function ocultarPin() { $('#pin').hidden = true; pinTecleado = ''; }
+async function teclaPin(t) {
+  if (comprobandoPin || $('#pin').hidden) return;
+  $('#pin').classList.remove('mal');
+  if (t === 'borrar') pinTecleado = pinTecleado.slice(0, -1);
+  else if (/^\d$/.test(t) && pinTecleado.length < LONGITUD_PIN) pinTecleado += t;
+  pintarPin();
+  if (pinTecleado.length < LONGITUD_PIN) return;
+  comprobandoPin = true;
+  $('#pin').classList.add('comprobando');
+  try {
+    const r = await llamar('pin', { p: pinTecleado });
+    if (r === 'ok') {
+      escribir(LS_BLOQUEO, false);
+      ocultarPin();
+      if (canal && canal.cap) sintonizar(true);
+    } else {
+      $('#pin').classList.add(r === 'espera' ? 'espera' : 'mal');
+      pinTecleado = '';
+      pintarPin();
+    }
+  } catch (e) {
+    if (e instanceof SinPermiso) mostrarCandado(true); else avisoSinConexion(true);
+    pinTecleado = '';
+    pintarPin();
+  } finally {
+    comprobandoPin = false;
+    $('#pin').classList.remove('comprobando');
+  }
+}
+$('#pin-teclas').addEventListener('click', e => { const b = e.target.closest('button[data-t]'); if (b) teclaPin(b.dataset.t); });
+document.addEventListener('keydown', e => {
+  if ($('#pin').hidden) return;
+  if (/^\d$/.test(e.key)) teclaPin(e.key);
+  else if (e.key === 'Backspace') teclaPin('borrar');
+});
 
 function salirDelCanal() {
   if (!canal) return;
   guardarPosicion(true);
-  clearTimeout(canal.siguienteTimer);
   canal = null;
+  ocultarPin();
   pararEmision();
   mostrarNieve(false);
   soltarPantallaEncendida();
@@ -497,6 +558,7 @@ function salirDelCanal() {
 
 function alternarPausa() {
   if (!canal || !canal.cap) return;
+  if (bloqueado()) { mostrarPin(); return; }
   if (!emision) { sintonizar(true); return; }    // estaba en "a continuación" o sin conexión
   if (video.paused) { ponerPausa(false); video.play().catch(() => ponerPausa(true)); }
   else { video.pause(); ponerPausa(true); guardarPosicion(true); }
@@ -516,8 +578,7 @@ $('#casa').addEventListener('click', salirDelCanal);
     b.classList.add('cargando', 'pulsado');
     timer = setTimeout(() => {
       b.classList.remove('cargando', 'pulsado');
-      if (!canal || !canal.cap) return;
-      clearTimeout(canal.siguienteTimer);
+      if (!canal || !canal.cap || bloqueado()) return;
       canal.t = 0;
       guardarPosicion(true);
       sintonizar(true);

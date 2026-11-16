@@ -8,6 +8,7 @@ for i, f in enumerate(sorted(x for x in os.listdir(VIDEOS) if x.endswith('.mp4')
     caps.append({'n': i + 1, 'titulo': f, 'video': 'video%010d' % (i + 1), 'bytes': os.path.getsize(os.path.join(VIDEOS, f)), 'caratula': None, '_f': os.path.join(VIDEOS, f)})
 SERIE = 'serieLasTresMellizas'
 ESTADO = {}
+BLOQ = {'b': False}
 LOG = []
 class H(SimpleHTTPRequestHandler):
     def __init__(s, *a, **k): super().__init__(*a, directory=APP, **k)
@@ -20,7 +21,11 @@ class H(SimpleHTTPRequestHandler):
         a = p.get('a'); LOG.append((time.time(), a, p.get('d'), p.get('h'), p.get('n'), p.get('t')))
         if a == 'catalogo': return s.responder(json.dumps({'series': [{'id': SERIE, 'nombre': 'LasTresMellizas', 'portada': None, 'capitulos': [{k: v for k, v in c.items() if k != '_f'} for c in caps]}]}))
         if a == 'caratulas': return s.responder('{}')
-        if a == 'estado': return s.responder(json.dumps(ESTADO.get(p.get('s'), {})))
+        if a == 'estado': return s.responder(json.dumps(dict(ESTADO.get(p.get('s'), {}), b=BLOQ['b'])))
+        if a == 'bloquear': BLOQ['b'] = True; return s.responder('ok')
+        if a == 'pin':
+            if p.get('p') == '12345678': BLOQ['b'] = False; return s.responder('ok')
+            return s.responder('mal')
         if a == 'guardar': ESTADO[p['s']] = {'n': p['n'], 't': p['t'], 'ts': int(time.time() * 1000)}; return s.responder('ok')
         if a == 'trozo':
             c = next((c for c in caps if c['video'] == p.get('v')), None); d, h = p['d'], p['h']

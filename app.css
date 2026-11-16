@@ -62,7 +62,7 @@ button:focus-visible { outline: 4px solid #f2c879; outline-offset: 4px; }
   padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
   background: radial-gradient(ellipse at 45% 50%, rgba(var(--brillo), .16), transparent 62%), var(--sala-a-oscuras);
 }
-#zona-tele { container-type: size; display: grid; place-items: center; min-width: 0; min-height: 0; }
+#zona-tele { position: relative; container-type: size; display: grid; place-items: center; min-width: 0; min-height: 0; }
 #tele { width: min(100cqw, 100cqh * 1.527); }
 #tele .pantalla { cursor: pointer; }
 #tele .pantalla::after {   /* curvatura y brillo del tubo */
@@ -119,6 +119,33 @@ button:focus-visible { outline: 4px solid #f2c879; outline-offset: 4px; }
   .boton { width: 60px; height: 60px; }
   .boton.grande { width: 80px; height: 80px; }
   #mandos { gap: 14px; }
+}
+
+/* ---------- PIN entre capítulos ---------- */
+#pin { position: absolute; inset: 0; z-index: 4; border-radius: 18px; display: grid; place-items: center; background: rgba(10, 8, 6, .55); }
+.pin-caja { display: grid; justify-items: center; gap: 14px; padding: 22px 26px; border-radius: 22px; background: #2a201a; box-shadow: 0 18px 40px rgba(0, 0, 0, .6); }
+#pin .icono-candado { width: 44px; color: #f2c879; }
+#pin-puntos { display: flex; gap: 10px; }
+#pin-puntos span { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--plastico); transition: background .1s; }
+#pin-puntos span.lleno { background: var(--plastico); }
+#pin.mal #pin-puntos { animation: temblor .35s; }
+#pin.mal #pin-puntos span { border-color: #ff9a8f; }
+#pin.comprobando #pin-teclas { opacity: .5; pointer-events: none; }
+.pin-espera { display: none; margin: 0; color: #ff9a8f; font-size: 15px; }
+#pin.espera .pin-espera { display: block; }
+#pin-teclas { display: grid; grid-template-columns: repeat(3, 66px); gap: 12px; }
+#pin-teclas button {
+  height: 66px; border-radius: 50%; font-size: 26px; font-weight: 700; color: var(--tinta);
+  background: radial-gradient(circle at 35% 30%, #f7eedb, var(--plastico) 55%, #cdbd9c);
+  box-shadow: 0 4px 0 #a8977a, 0 7px 12px rgba(0, 0, 0, .45);
+}
+#pin-teclas button:active { transform: translateY(3px); box-shadow: 0 1px 0 #a8977a; }
+#pin-teclas button svg { width: 30px; height: 30px; }
+@keyframes temblor { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
+@media (max-height: 520px) {
+  #pin-teclas { grid-template-columns: repeat(3, 52px); gap: 8px; }
+  #pin-teclas button { height: 52px; font-size: 22px; }
+  .pin-caja { gap: 8px; padding: 14px 18px; }
 }
 
 /* ---------- Avisos ---------- */
