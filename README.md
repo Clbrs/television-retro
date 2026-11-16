@@ -5,6 +5,6 @@ se puede pausar y volver a empezar, pero no adelantar ni saltar al siguiente.
 
 - `index.html`, `app.js`, `app.css`, `sw.js`: la app (se instala desde Chrome).
 - `drive/Code.gs`: el script de Google Drive que entrega series, carátulas y vídeos solo con la clave.
-- `herramientas/convertir.ps1`: pasa los `.avi` a `.mp4` fragmentado (H.264 + AAC) que la app puede ir cargando a trozos.
+- Los scripts de conversión (`convertir.ps1`, `procesar_descargas.ps1`) se guardan solo en el PC: llevan rutas privadas del NAS.
 
 Estructura en Drive: `TelevisionRetro/<Serie>/Video/*.mp4`, `TelevisionRetro/<Serie>/Caratulas/NN.jpg`, `TelevisionRetro/<Serie>/serie.jpg`.

@@ -1,0 +1,4 @@
+# Scripts locales con rutas del NAS: viven en D:\AgenteIA\TelevisionRetro, no en el repositorio público
+herramientas/*.ps1
+*.env
+*.log
