@@ -173,8 +173,7 @@ function leerSerie_(carpeta) {
   const it = iv.next().getFiles();
   while (it.hasNext() && s.capitulos.length < MAX_CAPITULOS) {
     const f = it.next();
-    // "Las Tres Mellizas Cap 01 Pulgarcito.mp4"  o  "01 - Pulgarcito.mp4"
-    const m = f.getName().match(/^(?:.*?\bCap(?:[ií]tulo)?\.?\s*)?(\d{1,4})\s*[-.]?\s*(.*)\.mp4$/i);
+    const m = numeroYTitulo_(f.getName());
     if (!m) continue;
     const n = Number(m[1]);
     if (vistos[n]) continue;
@@ -199,6 +198,16 @@ function permitidos_() {
     series[s.id] = ns;
   });
   return { videos: videos, imagenes: imagenes, series: series };
+}
+
+// Saca el número de capítulo y el título del nombre del fichero. Valen estas formas:
+//   "Las Tres Mellizas Cap 01 Pulgarcito.mp4"
+//   "D'Artacán y los tres mosqueperros - 01 - El viaje de d'Artacán.mp4"
+//   "01 - Pulgarcito.mp4"
+function numeroYTitulo_(nombre) {
+  return nombre.match(/^(?:.*?\bCap(?:[ií]tulo)?\.?\s*)(\d{1,4})\s*[-.]?\s*(.*)\.mp4$/i) ||
+         nombre.match(/^.*? - (\d{1,4}) - (.*)\.mp4$/i) ||
+         nombre.match(/^(\d{1,4})\s*[-.]?\s*(.*)\.mp4$/i);
 }
 
 function idValido_(id) { return typeof id === 'string' && /^[A-Za-z0-9_-]{10,100}$/.test(id); }
