@@ -71,6 +71,7 @@ button:focus-visible { outline: 4px solid #f2c879; outline-offset: 4px; }
               radial-gradient(ellipse at 30% 18%, rgba(255, 255, 255, .10), transparent 40%);
 }
 #video { object-fit: cover; background: #000; }
+#video.entera { object-fit: contain; }
 #siguiente { object-fit: cover; opacity: 0; transition: opacity .6s; }
 #siguiente.visible { opacity: 1; }
 #nieve { image-rendering: pixelated; opacity: 0; transition: opacity .25s; pointer-events: none; }

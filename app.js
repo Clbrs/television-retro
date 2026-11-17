@@ -89,7 +89,8 @@ function limpiarCatalogo(cat) {
     const vistos = new Set();
     const capitulos = s.capitulos.slice(0, 500).map(limpiarCapitulo)
       .filter(c => c && !vistos.has(c.n) && vistos.add(c.n)).sort((a, b) => a.n - b.n);
-    return capitulos.length ? { id: s.id, nombre: typeof s.nombre === 'string' ? s.nombre.slice(0, 100) : '', portada: idOk(s.portada) ? s.portada : null, capitulos } : null;
+    return capitulos.length ? { id: s.id, nombre: typeof s.nombre === 'string' ? s.nombre.slice(0, 100) : '', portada: idOk(s.portada) ? s.portada : null,
+      ajuste: s.ajuste === 'entera' ? 'entera' : 'llenar', capitulos } : null;
   }).filter(Boolean);
 }
 
@@ -432,6 +433,7 @@ video.addEventListener('ended', () => { if (canal) aContinuacion(); });
 
 async function entrarEnCanal(serie) {
   canal = { serie, cap: null, t: 0 };
+  video.classList.toggle('entera', serie.ajuste === 'entera');   // imagen más ancha que 4:3: se ve entera
   $('#menu').hidden = true;
   $('#canal').hidden = false;
   ponerPausa(false);

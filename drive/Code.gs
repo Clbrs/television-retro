@@ -5,6 +5,7 @@
  *   TelevisionRetro/
  *     LasTresMellizas/
  *       serie.jpg          -> la imagen de la serie en el menú (opcional)
+ *       pantalla.txt       -> opcional: "entera" si la imagen es más ancha que 4:3 (no se recorta)
  *       Video/             -> "Las Tres Mellizas Cap 01 Pulgarcito.mp4", ...  (los .avi se ignoran)
  *       Caratulas/         -> "01.jpg", "02.jpg", ...  (número del capítulo)
  *
@@ -183,7 +184,7 @@ function catalogoParaApp_() {
   return {
     series: catalogo_().series.map(function (s) {
       return {
-        id: s.id, nombre: s.nombre, portada: s.portada,
+        id: s.id, nombre: s.nombre, portada: s.portada, ajuste: s.ajuste,
         capitulos: s.capitulos.map(function (c) {
           return { n: c.n, titulo: c.titulo, video: c.video, bytes: c.bytes, caratula: c.caratula };
         })
@@ -207,11 +208,13 @@ function construirCatalogo_() {
 }
 
 function leerSerie_(carpeta) {
-  const s = { id: carpeta.getId(), nombre: carpeta.getName().slice(0, 100), portada: null, capitulos: [] };
+  const s = { id: carpeta.getId(), nombre: carpeta.getName().slice(0, 100), portada: null, ajuste: 'llenar', capitulos: [] };
   const fs = carpeta.getFiles();
   while (fs.hasNext()) {
     const f = fs.next();
-    if (/^serie\.(jpe?g|png|webp)$/i.test(f.getName()) && f.getSize() <= MAX_BYTES_CARATULA) { s.portada = f.getId(); break; }
+    if (/^serie\.(jpe?g|png|webp)$/i.test(f.getName()) && f.getSize() <= MAX_BYTES_CARATULA) s.portada = f.getId();
+    // pantalla.txt con "entera": la imagen es más ancha que 4:3 y se ve entera (con bandas) en vez de recortada
+    if (/^pantalla\.txt$/i.test(f.getName()) && f.getSize() < 100 && /entera/i.test(f.getBlob().getDataAsString())) s.ajuste = 'entera';
   }
   const caratulas = {};
   const ic = carpeta.getFoldersByName('Caratulas');
