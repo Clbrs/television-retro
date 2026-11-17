@@ -2,3 +2,10 @@
 herramientas/*.ps1
 *.env
 *.log
+
+# App de Android TV: compilados, SDK y firma viven solo en el PC
+android-tv/obj/
+android-tv/salida/
+*.jks
+*.pass
+*.apk
