@@ -23,11 +23,15 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
 // ---------- Clave de acceso ----------
 const FORMATO_CLAVE = /^[A-Za-z0-9]{20,128}$/;
 // Un enlace con #clave=... la guarda y la quita de la barra de direcciones (el # nunca llega a ningún servidor).
-(function claveDesdeEnlace() {
+function claveDesdeEnlace() {
   const m = location.hash.match(/^#clave=([A-Za-z0-9]{20,128})$/);
   if (m) escribir(LS_CLAVE, m[1]);
   if (location.hash) history.replaceState(null, '', location.pathname + location.search);
-})();
+  return !!m;
+}
+claveDesdeEnlace();
+// Si la clave llega con la app ya abierta (p. ej. desde el PC a la tele), solo cambia el #: se guarda y se recarga.
+window.addEventListener('hashchange', () => { if (claveDesdeEnlace()) location.reload(); });
 const clave = () => { const k = leer(LS_CLAVE, ''); return typeof k === 'string' && FORMATO_CLAVE.test(k) ? k : ''; };
 
 class SinPermiso extends Error {}
@@ -572,24 +576,33 @@ $('#casa').addEventListener('click', salirDelCanal);
 // Volver a empezar el capítulo: hay que mantener pulsado (así no se reinicia sin querer).
 (function botonReiniciar() {
   const b = $('#reiniciar');
-  let timer = 0;
-  const empezar = ev => {
-    if (ev.type === 'keydown' && (ev.repeat || (ev.key !== 'Enter' && ev.key !== ' '))) return;
-    ev.preventDefault();
+  let timer = 0, modo = '';   // modo: 'tecla' (mando/teclado) o 'dedo' (ratón/táctil)
+  const esOK = ev => ev.key === 'Enter' || ev.key === ' ' || ev.key === 'Select' || ev.keyCode === 13 || ev.keyCode === 23;
+  const arrancar = m => {
+    modo = m;
     clearTimeout(timer);
     b.classList.add('cargando', 'pulsado');
     timer = setTimeout(() => {
-      b.classList.remove('cargando', 'pulsado');
+      soltar();
       if (!canal || !canal.cap || bloqueado()) return;
       canal.t = 0;
       guardarPosicion(true);
       sintonizar(true);
     }, PULSACION_REINICIAR_MS);
   };
-  const soltar = () => { clearTimeout(timer); b.classList.remove('cargando', 'pulsado'); };
-  b.addEventListener('pointerdown', empezar);
-  b.addEventListener('keydown', empezar);
-  ['pointerup', 'pointerleave', 'pointercancel', 'keyup', 'blur'].forEach(ev => b.addEventListener(ev, soltar));
+  const soltar = () => { clearTimeout(timer); timer = 0; modo = ''; b.classList.remove('cargando', 'pulsado'); };
+  // Con el mando, Android TV mete además toques simulados al pulsar OK: mientras se mantiene la tecla,
+  // los eventos de puntero se ignoran y solo cuenta soltar la tecla (o que el foco se vaya).
+  b.addEventListener('keydown', ev => {
+    if (!esOK(ev)) return;
+    ev.preventDefault();
+    if (modo !== 'tecla') arrancar('tecla');
+  });
+  b.addEventListener('keyup', ev => { if (esOK(ev) && modo === 'tecla') soltar(); });
+  b.addEventListener('blur', soltar);
+  b.addEventListener('pointerdown', ev => { if (modo === 'tecla') return; ev.preventDefault(); arrancar('dedo'); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(t => b.addEventListener(t, () => { if (modo === 'dedo') soltar(); }));
+  b.addEventListener('click', ev => ev.preventDefault());
   b.addEventListener('contextmenu', ev => ev.preventDefault());
 })();
 
