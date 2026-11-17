@@ -602,9 +602,83 @@ window.addEventListener('pagehide', () => guardarPosicion(true));
 // Que la pantalla no se apague mientras se ve la tele.
 let bloqueoPantalla = null;
 async function pedirPantallaEncendida() {
+  if (window.TeleTV) { try { window.TeleTV.pantallaEncendida(true); } catch { /* app de la tele */ } }
   try { if ('wakeLock' in navigator && !bloqueoPantalla) { bloqueoPantalla = await navigator.wakeLock.request('screen'); bloqueoPantalla.addEventListener('release', () => { bloqueoPantalla = null; }); } } catch { /* no disponible */ }
 }
-function soltarPantallaEncendida() { if (bloqueoPantalla) bloqueoPantalla.release().catch(() => {}); bloqueoPantalla = null; }
+function soltarPantallaEncendida() {
+  if (window.TeleTV) { try { window.TeleTV.pantallaEncendida(false); } catch { /* app de la tele */ } }
+  if (bloqueoPantalla) bloqueoPantalla.release().catch(() => {});
+  bloqueoPantalla = null;
+}
+
+// ---------- Mando de la tele (flechas, OK, Atrás, play/pausa) ----------
+const MODO_TV = params.has('tv');
+if (MODO_TV) document.documentElement.classList.add('modo-tv');
+function visible(el) {
+  if (!el || el.disabled) return false;
+  const r = el.getBoundingClientRect();
+  return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden';
+}
+function botonesActivos() {
+  let raiz;
+  if ($('#candado').classList.contains('visible')) raiz = $('#candado');
+  else if (!$('#canal').hidden) raiz = $('#canal');
+  else raiz = $('#menu');
+  const pinVisible = !$('#pin').hidden;
+  return [...raiz.querySelectorAll('button, input')]
+    .filter(el => visible(el) && !(pinVisible && el.id === 'tocar-play'));   // con el PIN delante, el botón de ver queda tapado
+}
+// Mueve el foco al botón más cercano en la dirección de la flecha.
+function moverFoco(dir) {
+  const lista = botonesActivos();
+  if (!lista.length) return;
+  const actual = document.activeElement;
+  if (!lista.includes(actual)) { enfocarPrincipal(); return; }
+  const a = actual.getBoundingClientRect(), ax = a.left + a.width / 2, ay = a.top + a.height / 2;
+  let mejor = null, mejorPeso = Infinity;
+  for (const el of lista) {
+    if (el === actual) continue;
+    const r = el.getBoundingClientRect(), dx = r.left + r.width / 2 - ax, dy = r.top + r.height / 2 - ay;
+    const principal = { ArrowRight: dx, ArrowLeft: -dx, ArrowDown: dy, ArrowUp: -dy }[dir];
+    const lateral = (dir === 'ArrowRight' || dir === 'ArrowLeft') ? Math.abs(dy) : Math.abs(dx);
+    if (principal <= 4) continue;
+    const peso = principal + lateral * 2;
+    if (peso < mejorPeso) { mejorPeso = peso; mejor = el; }
+  }
+  if (mejor) mejor.focus();
+}
+function enfocarPrincipal() {
+  if ($('#candado').classList.contains('visible')) { $('#campo-clave').focus(); return; }
+  if (!$('#canal').hidden) {
+    if (!$('#pin').hidden) { const b = $('#pin-teclas button'); if (b) b.focus(); return; }
+    $('#play').focus();
+    return;
+  }
+  const b = $('.canal-boton');
+  if (b) b.focus();
+}
+document.addEventListener('keydown', e => {
+  if (e.key.startsWith('Arrow')) {
+    if (e.target && e.target.tagName === 'INPUT' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return;
+    e.preventDefault();
+    moverFoco(e.key);
+  } else if ((e.key === 'MediaPlayPause' || e.key === 'MediaPlay' || e.key === 'MediaPause') && canal) {
+    e.preventDefault();
+    if ((e.key === 'MediaPlay' && !video.paused) || (e.key === 'MediaPause' && video.paused)) return;
+    alternarPausa();
+  }
+});
+// Botón Atrás del mando: dentro de un canal vuelve al menú; en el menú sale de la app.
+window.atrasTV = () => {
+  if (canal) { salirDelCanal(); setTimeout(enfocarPrincipal, 50); return true; }
+  return false;
+};
+if (MODO_TV) {
+  // Al cambiar de pantalla, el foco va al botón principal para poder seguir con el mando.
+  new MutationObserver(() => setTimeout(() => { if (!botonesActivos().includes(document.activeElement)) enfocarPrincipal(); }, 30))
+    .observe(document.body, { subtree: true, attributes: true, attributeFilter: ['hidden', 'class'] });
+  setTimeout(enfocarPrincipal, 300);
+}
 
 // ---------- Arranque ----------
 if ('serviceWorker' in navigator && !MODO_PRUEBA) navigator.serviceWorker.register('sw.js').catch(() => {});

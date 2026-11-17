@@ -149,6 +149,12 @@ button:focus-visible { outline: 4px solid #f2c879; outline-offset: 4px; }
   .pin-caja { gap: 8px; padding: 14px 18px; }
 }
 
+/* ---------- Con el mando de la tele: el foco tiene que verse bien desde el sofá ---------- */
+.modo-tv button:focus { outline: 6px solid #f2c879; outline-offset: 6px; }
+.modo-tv .canal-boton:focus { outline: none; transform: scale(1.06); filter: drop-shadow(0 0 22px rgba(242, 200, 121, .9)); }
+.modo-tv #pin-teclas button:focus { outline-offset: 3px; }
+.modo-tv { cursor: none; }
+
 /* ---------- Avisos ---------- */
 #aviso { position: fixed; right: 18px; bottom: 18px; display: none; z-index: 5; }
 #aviso.visible { display: block; }
