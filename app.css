@@ -164,9 +164,9 @@ button:focus-visible { outline: 4px solid #f2c879; outline-offset: 4px; }
 #pin:not(.voluntario) #pin-cancelar { visibility: hidden; }
 
 /* ---------- Elegir capítulo ---------- */
-#selector { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; border-radius: 18px; background: rgba(10, 8, 6, .6); }
+#selector { position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; border-radius: 18px; background: rgba(10, 8, 6, .6); }
 .selector-caja {
-  position: relative; display: flex; width: min(94%, 980px); height: 90%; padding: 16px;
+  position: relative; display: flex; width: min(94%, 980px); height: 90%; min-height: 0; padding: 16px;
   border-radius: 22px; background: #2a201a; box-shadow: 0 18px 40px rgba(0, 0, 0, .6);
 }
 #selector-cerrar {
@@ -176,7 +176,7 @@ button:focus-visible { outline: 4px solid #f2c879; outline-offset: 4px; }
 }
 #selector-cerrar svg { width: 26px; height: 26px; }
 #selector-lista {
-  flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); align-content: start; gap: 14px;
+  flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); align-content: start; gap: 14px;
   margin: 0; padding: 6px; list-style: none; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: #6b4428 transparent;
 }
 .cap {
