@@ -13,7 +13,7 @@
 <link rel="icon" href="icono-192.png">
 <link rel="apple-touch-icon" href="icono-180.png">
 <link rel="preload" href="tele.png" as="image">
-<link rel="stylesheet" href="app.css?v=6">
+<link rel="stylesheet" href="app.css?v=7">
 </head>
 <body>
 
@@ -48,12 +48,18 @@
       </div>
       <img class="marco" src="tele.png" alt="" draggable="false">
     </div>
-    <div id="pin" role="dialog" aria-label="PIN para ver el siguiente capítulo" hidden>
+    <div id="pin" role="dialog" aria-label="PIN" hidden>
       <div class="pin-caja">
         <svg class="icono-candado" viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5" fill="currentColor"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
         <div id="pin-puntos" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
         <p class="pin-espera" role="alert">Demasiados intentos. Espera 5 minutos.</p>
-        <div id="pin-teclas"><button type="button" data-t="1">1</button><button type="button" data-t="2">2</button><button type="button" data-t="3">3</button><button type="button" data-t="4">4</button><button type="button" data-t="5">5</button><button type="button" data-t="6">6</button><button type="button" data-t="7">7</button><button type="button" data-t="8">8</button><button type="button" data-t="9">9</button><button type="button" data-t="borrar" aria-label="Borrar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h11v14H9l-6-7z M12.5 9.5l5 5m0-5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></button><button type="button" data-t="0">0</button><span></span></div>
+        <div id="pin-teclas"><button type="button" data-t="1">1</button><button type="button" data-t="2">2</button><button type="button" data-t="3">3</button><button type="button" data-t="4">4</button><button type="button" data-t="5">5</button><button type="button" data-t="6">6</button><button type="button" data-t="7">7</button><button type="button" data-t="8">8</button><button type="button" data-t="9">9</button><button type="button" data-t="borrar" aria-label="Borrar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h11v14H9l-6-7z M12.5 9.5l5 5m0-5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></button><button type="button" data-t="0">0</button><button type="button" data-t="cancelar" id="pin-cancelar" aria-label="Cancelar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button></div>
+      </div>
+    </div>
+    <div id="selector" role="dialog" aria-label="Elegir capítulo" hidden>
+      <div class="selector-caja">
+        <button type="button" id="selector-cerrar" aria-label="Cerrar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>
+        <ul id="selector-lista"></ul>
       </div>
     </div>
   </div>
@@ -68,6 +74,14 @@
     <button class="boton grande" id="play" aria-label="Pausar o seguir">
       <svg class="icono-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5v17a1 1 0 0 0 1.5.86l14-8.5a1 1 0 0 0 0-1.72l-14-8.5A1 1 0 0 0 6 3.5z" fill="currentColor"/></svg>
       <svg class="icono-pausa" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3.5" width="5" height="17" rx="1.6" fill="currentColor"/><rect x="14" y="3.5" width="5" height="17" rx="1.6" fill="currentColor"/></svg>
+    </button>
+    <button class="boton con-pin" id="saltar" aria-label="Pasar al siguiente capítulo (pide PIN)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5v13a.8.8 0 0 0 1.2.7l9.6-6.5a.8.8 0 0 0 0-1.4L5.2 4.8A.8.8 0 0 0 4 5.5z" fill="currentColor"/><rect x="16.5" y="4.5" width="3.2" height="15" rx="1.2" fill="currentColor"/></svg>
+      <svg class="candadito" viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5" fill="currentColor"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+    </button>
+    <button class="boton con-pin" id="elegir" aria-label="Elegir capítulo (pide PIN)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7.5" height="7.5" rx="1.6" fill="currentColor"/><rect x="13" y="3.5" width="7.5" height="7.5" rx="1.6" fill="currentColor"/><rect x="3.5" y="13" width="7.5" height="7.5" rx="1.6" fill="currentColor"/><rect x="13" y="13" width="7.5" height="7.5" rx="1.6" fill="currentColor"/></svg>
+      <svg class="candadito" viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5" fill="currentColor"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
     </button>
   </div>
 </section>
@@ -88,6 +102,6 @@
   </form>
 </div>
 
-<script src="app.js?v=6" defer></script>
+<script src="app.js?v=7" defer></script>
 </body>
 </html>

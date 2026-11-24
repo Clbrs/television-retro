@@ -99,7 +99,12 @@ button:focus-visible { outline: 4px solid #f2c879; outline-offset: 4px; }
 .boton > svg { width: 52%; height: 52%; }
 .boton.grande { width: 104px; height: 104px; }
 #casa { margin-bottom: auto; }
-#mandos::after { content: ""; margin-top: auto; }
+#elegir { margin-top: auto; }
+/* los botones que piden PIN llevan un candadito */
+.boton > svg.candadito {
+  position: absolute; right: -5px; bottom: -5px; width: 28px; height: 28px; padding: 5px;
+  border-radius: 50%; background: #2a201a; color: #f2c879; box-shadow: 0 2px 6px rgba(0, 0, 0, .5);
+}
 #play .icono-pausa { display: none; }
 #canal:not(.en-pausa) #play .icono-play { display: none; }
 #canal:not(.en-pausa) #play .icono-pausa { display: block; }
@@ -114,12 +119,23 @@ button:focus-visible { outline: 4px solid #f2c879; outline-offset: 4px; }
   #canal { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
   #mandos { flex-direction: row; padding-bottom: 18px; }
   #casa { margin: 0 auto 0 0; }
-  #mandos::after { margin: 0 0 0 auto; }
+  #elegir { margin: 0 0 0 auto; }
+}
+@media (max-width: 520px) and (orientation: portrait) {
+  .boton { width: 58px; height: 58px; }
+  .boton.grande { width: 78px; height: 78px; }
+  #mandos { gap: 12px; }
+}
+@media (max-height: 600px) and (orientation: landscape) {
+  .boton { width: 62px; height: 62px; }
+  .boton.grande { width: 86px; height: 86px; }
+  #mandos { gap: 16px; }
 }
 @media (max-height: 420px) and (orientation: landscape) {
-  .boton { width: 60px; height: 60px; }
-  .boton.grande { width: 80px; height: 80px; }
-  #mandos { gap: 14px; }
+  .boton { width: 52px; height: 52px; }
+  .boton.grande { width: 70px; height: 70px; }
+  #mandos { gap: 10px; }
+  .boton > svg.candadito { width: 22px; height: 22px; padding: 4px; }
 }
 
 /* ---------- PIN entre capítulos ---------- */
@@ -143,6 +159,48 @@ button:focus-visible { outline: 4px solid #f2c879; outline-offset: 4px; }
 #pin-teclas button:active { transform: translateY(3px); box-shadow: 0 1px 0 #a8977a; }
 #pin-teclas button svg { width: 30px; height: 30px; }
 @keyframes temblor { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
+/* cancelar: solo cuando el PIN lo pide un botón (pasar o elegir capítulo), no al acabar el capítulo */
+#pin-cancelar { color: var(--rojo); }
+#pin:not(.voluntario) #pin-cancelar { visibility: hidden; }
+
+/* ---------- Elegir capítulo ---------- */
+#selector { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; border-radius: 18px; background: rgba(10, 8, 6, .6); }
+.selector-caja {
+  position: relative; display: flex; width: min(94%, 980px); height: 90%; padding: 16px;
+  border-radius: 22px; background: #2a201a; box-shadow: 0 18px 40px rgba(0, 0, 0, .6);
+}
+#selector-cerrar {
+  position: absolute; top: -14px; right: -14px; z-index: 1; display: grid; place-items: center; width: 54px; height: 54px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f7eedb, var(--plastico) 55%, #cdbd9c); color: var(--rojo);
+  box-shadow: 0 4px 0 #a8977a, 0 8px 14px rgba(0, 0, 0, .5);
+}
+#selector-cerrar svg { width: 26px; height: 26px; }
+#selector-lista {
+  flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); align-content: start; gap: 14px;
+  margin: 0; padding: 6px; list-style: none; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: #6b4428 transparent;
+}
+.cap {
+  position: relative; display: block; width: 100%; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 12px;
+  background: #000; box-shadow: 0 4px 10px rgba(0, 0, 0, .5); transition: transform .12s;
+}
+.cap:active { transform: scale(.97); }
+.cap img { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .3s; }
+.cap img.cargada { opacity: 1; }
+.cap .num {
+  position: absolute; left: 7px; top: 7px; min-width: 32px; padding: 2px 8px; border-radius: 14px;
+  background: var(--plastico); color: var(--tinta); font-size: 17px; font-weight: 800; text-align: center;
+}
+.cap .titulo {
+  position: absolute; inset: auto 0 0; padding: 14px 8px 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  background: linear-gradient(transparent, rgba(0, 0, 0, .8)); color: #fff; font-size: 13px; text-align: left;
+}
+.cap.actual { box-shadow: inset 0 0 0 4px #f2c879, 0 4px 10px rgba(0, 0, 0, .5); }
+.cap.actual .num { background: #f2c879; }
+@media (max-width: 700px), (max-height: 520px) {
+  #selector-lista { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
+  .cap .titulo { display: none; }
+}
+
 @media (max-height: 520px) {
   #pin-teclas { grid-template-columns: repeat(3, 52px); gap: 8px; }
   #pin-teclas button { height: 52px; font-size: 22px; }
@@ -153,6 +211,7 @@ button:focus-visible { outline: 4px solid #f2c879; outline-offset: 4px; }
 .modo-tv button:focus { outline: 6px solid #f2c879; outline-offset: 6px; }
 .modo-tv .canal-boton:focus { outline: none; transform: scale(1.06); filter: drop-shadow(0 0 22px rgba(242, 200, 121, .9)); }
 .modo-tv #pin-teclas button:focus { outline-offset: 3px; }
+.modo-tv .cap:focus { outline: 6px solid #f2c879; outline-offset: 3px; transform: scale(1.04); }
 .modo-tv { cursor: none; }
 
 /* ---------- Avisos ---------- */

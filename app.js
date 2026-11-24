@@ -443,6 +443,8 @@ async function entrarEnCanal(serie) {
   ponerPausa(false);
   $('#siguiente').classList.remove('visible');
   ocultarPin();
+  cerrarSelector(false);
+  seguiaViendo = false;
   mostrarNieve('fuerte');
   // el toque que abre el canal sirve de permiso para reproducir con sonido
   video.muted = false;
@@ -479,8 +481,7 @@ async function sintonizar(enGesto) {
 // Fin del capítulo: se prepara el siguiente y la tele queda bloqueada hasta que se meta un PIN.
 function aContinuacion() {
   const c = canal;
-  const caps = c.serie.capitulos;
-  const sig = caps[(caps.indexOf(c.cap) + 1) % caps.length];
+  const sig = siguienteDe(c.cap);
   c.cap = sig; c.t = 0;
   guardarPosicion(true);
   bloquear(true);
@@ -489,6 +490,21 @@ function aContinuacion() {
   ponerImagen($('#siguiente'), sig.caratula);
   mostrarCaratula();
   mostrarPin();
+}
+function siguienteDe(cap) {
+  const caps = canal.serie.capitulos;
+  return caps[(caps.indexOf(cap) + 1) % caps.length];
+}
+// Cambiar de capítulo a mano (después de meter el PIN): empieza desde el principio.
+function irACapitulo(cap) {
+  if (!canal || !cap) return;
+  pararEmision();
+  canal.cap = cap; canal.t = 0;
+  guardarPosicion(true);
+  ponerPausa(false);
+  ponerImagen($('#siguiente'), cap.caratula);
+  mostrarCaratula();
+  sintonizar(true);
 }
 function mostrarCaratula() {
   $('#siguiente').classList.add('visible');
@@ -503,19 +519,40 @@ function bloquear(avisarAlScript) {
 }
 const LONGITUD_PIN = 8;
 let pinTecleado = '', comprobandoPin = false;
+let pinPara = null;          // null: bloqueo entre capítulos | 'saltar' | 'elegir' (los pide el botón, se pueden cancelar)
+let seguiaViendo = false;    // si el capítulo estaba sonando cuando se abrió el PIN o el selector
 function pintarPin() {
   $('#pin-puntos').querySelectorAll('span').forEach((p, i) => p.classList.toggle('lleno', i < pinTecleado.length));
 }
-function mostrarPin() {
+function mostrarPin(para = null) {
+  if (para && !pinPara && $('#pin').hidden) {
+    seguiaViendo = !video.paused;
+    if (seguiaViendo) { video.pause(); guardarPosicion(true); }
+  }
+  pinPara = para;
+  $('#pin').classList.toggle('voluntario', !!para);
   pinTecleado = '';
   pintarPin();
   $('#pin').classList.remove('mal', 'espera');
   $('#pin').hidden = false;
   ponerPausa(true);
 }
-function ocultarPin() { $('#pin').hidden = true; pinTecleado = ''; }
+function ocultarPin() { $('#pin').hidden = true; pinTecleado = ''; pinPara = null; $('#pin').classList.remove('voluntario'); }
+// Vuelve a como estaba antes de abrir el PIN o el selector.
+function reanudar() {
+  if (!canal || !canal.cap || bloqueado()) return;
+  if (seguiaViendo && emision) { ponerPausa(false); video.play().catch(() => ponerPausa(true)); }
+  seguiaViendo = false;
+}
+function cancelarPin() {
+  if (!pinPara) return;   // el PIN del final del capítulo no se puede cancelar
+  ocultarPin();
+  if (bloqueado()) { mostrarPin(); return; }   // si la tele ya estaba bloqueada, vuelve el PIN de siempre
+  reanudar();
+}
 async function teclaPin(t) {
   if (comprobandoPin || $('#pin').hidden) return;
+  if (t === 'cancelar') { cancelarPin(); return; }
   $('#pin').classList.remove('mal');
   if (t === 'borrar') pinTecleado = pinTecleado.slice(0, -1);
   else if (/^\d$/.test(t) && pinTecleado.length < LONGITUD_PIN) pinTecleado += t;
@@ -527,8 +564,12 @@ async function teclaPin(t) {
     const r = await llamar('pin', { p: pinTecleado });
     if (r === 'ok') {
       escribir(LS_BLOQUEO, false);
+      const para = pinPara;
       ocultarPin();
-      if (canal && canal.cap) sintonizar(true);
+      if (!canal || !canal.cap) return;
+      if (para === 'saltar') irACapitulo(siguienteDe(canal.cap));
+      else if (para === 'elegir') abrirSelector();
+      else sintonizar(true);
     } else {
       $('#pin').classList.add(r === 'espera' ? 'espera' : 'mal');
       pinTecleado = '';
@@ -548,13 +589,58 @@ document.addEventListener('keydown', e => {
   if ($('#pin').hidden) return;
   if (/^\d$/.test(e.key)) teclaPin(e.key);
   else if (e.key === 'Backspace') teclaPin('borrar');
+  else if (e.key === 'Escape') cancelarPin();
 });
+
+// ---------- Pasar de capítulo y elegir capítulo (los dos piden PIN) ----------
+$('#saltar').addEventListener('click', () => { if (canal && canal.cap && $('#selector').hidden) mostrarPin('saltar'); });
+$('#elegir').addEventListener('click', () => { if (canal && canal.cap && $('#selector').hidden) mostrarPin('elegir'); });
+function abrirSelector() {
+  if (!canal) return;
+  const ul = $('#selector-lista');
+  ul.replaceChildren();
+  for (const c of canal.serie.capitulos) {
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'cap';
+    b.setAttribute('aria-label', `Capítulo ${c.n}${c.titulo ? ': ' + c.titulo : ''}`);
+    const img = document.createElement('img');
+    img.alt = '';
+    ponerImagen(img, c.caratula);
+    const num = document.createElement('span');
+    num.className = 'num';
+    num.textContent = String(c.n);
+    const titulo = document.createElement('span');
+    titulo.className = 'titulo';
+    titulo.textContent = c.titulo || '';
+    b.append(img, num, titulo);
+    if (c === canal.cap) { b.classList.add('actual'); b.setAttribute('aria-current', 'true'); }
+    b.addEventListener('click', () => { cerrarSelector(false); seguiaViendo = false; irACapitulo(c); });
+    li.append(b);
+    ul.append(li);
+  }
+  ponerPausa(true);
+  $('#selector').hidden = false;
+  const actual = ul.querySelector('.actual');
+  if (actual) { actual.scrollIntoView({ block: 'center' }); if (MODO_TV) actual.focus(); }
+}
+function cerrarSelector(seguir) {
+  if ($('#selector').hidden) return;
+  $('#selector').hidden = true;
+  $('#selector-lista').replaceChildren();
+  if (seguir) reanudar();
+}
+$('#selector-cerrar').addEventListener('click', () => cerrarSelector(true));
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#selector').hidden) cerrarSelector(true); });
 
 function salirDelCanal() {
   if (!canal) return;
   guardarPosicion(true);
   canal = null;
   ocultarPin();
+  cerrarSelector(false);
+  seguiaViendo = false;
   pararEmision();
   mostrarNieve(false);
   soltarPantallaEncendida();
@@ -564,6 +650,8 @@ function salirDelCanal() {
 
 function alternarPausa() {
   if (!canal || !canal.cap) return;
+  if (!$('#selector').hidden) return;
+  if (pinPara) { cancelarPin(); return; }   // play con el PIN de pasar/elegir delante: se cancela y sigue
   if (bloqueado()) { mostrarPin(); return; }
   if (!emision) { sintonizar(true); return; }    // estaba en "a continuación" o sin conexión
   if (video.paused) { ponerPausa(false); video.play().catch(() => ponerPausa(true)); }
@@ -635,6 +723,7 @@ function visible(el) {
 function botonesActivos() {
   let raiz;
   if ($('#candado').classList.contains('visible')) raiz = $('#candado');
+  else if (!$('#canal').hidden && !$('#selector').hidden) raiz = $('#selector');
   else if (!$('#canal').hidden) raiz = $('#canal');
   else raiz = $('#menu');
   const pinVisible = !$('#pin').hidden;
@@ -663,6 +752,7 @@ function moverFoco(dir) {
 function enfocarPrincipal() {
   if ($('#candado').classList.contains('visible')) { $('#campo-clave').focus(); return; }
   if (!$('#canal').hidden) {
+    if (!$('#selector').hidden) { const b = $('#selector-lista .actual') || $('#selector-lista button'); if (b) b.focus(); return; }
     if (!$('#pin').hidden) { const b = $('#pin-teclas button'); if (b) b.focus(); return; }
     $('#play').focus();
     return;
@@ -683,6 +773,8 @@ document.addEventListener('keydown', e => {
 });
 // Botón Atrás del mando: dentro de un canal vuelve al menú; en el menú sale de la app.
 window.atrasTV = () => {
+  if (canal && !$('#selector').hidden) { cerrarSelector(true); return true; }
+  if (canal && pinPara) { cancelarPin(); return true; }
   if (canal) { salirDelCanal(); setTimeout(enfocarPrincipal, 50); return true; }
   return false;
 };
